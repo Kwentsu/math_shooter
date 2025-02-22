@@ -252,8 +252,8 @@
             gameWidth: 0,
             gameHeight: 0,
             currentEnemySpeed: gameConfig.enemySpeed,
-            moveLeft: false,  // Adicionado para controle de toque
-            moveRight: false  // Adicionado para controle de toque
+            moveLeft: false,
+            moveRight: false
         };
 
         // Elementos do DOM
@@ -517,20 +517,28 @@
         }
 
         // Configurar dificuldades
-        easyButton.addEventListener('click', () => {
-            gameConfig.enemySpeed = 0.25;
-            gameConfig.difficultyIncrease = 0;
+        function startGameWithDifficulty(enemySpeed, difficultyIncrease) {
+            gameConfig.enemySpeed = enemySpeed;
+            gameConfig.difficultyIncrease = difficultyIncrease;
             initGame();
+        }
+
+        easyButton.addEventListener('click', () => startGameWithDifficulty(0.25, 0));
+        easyButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGameWithDifficulty(0.25, 0);
         });
-        mediumButton.addEventListener('click', () => {
-            gameConfig.enemySpeed = 0.3;
-            gameConfig.difficultyIncrease = 0.05;
-            initGame();
+
+        mediumButton.addEventListener('click', () => startGameWithDifficulty(0.3, 0.05));
+        mediumButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGameWithDifficulty(0.3, 0.05);
         });
-        hardButton.addEventListener('click', () => {
-            gameConfig.enemySpeed = 0.4;
-            gameConfig.difficultyIncrease = 0.1;
-            initGame();
+
+        hardButton.addEventListener('click', () => startGameWithDifficulty(0.4, 0.1));
+        hardButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGameWithDifficulty(0.4, 0.1);
         });
 
         // Controles de teclado
@@ -587,7 +595,12 @@
             updatePlayerPosition();
         });
 
+        // Botão de reiniciar com suporte a toque
         restartButton.addEventListener('click', initGame);
+        restartButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initGame();
+        });
 
         // Preparação inicial
         function init() {
