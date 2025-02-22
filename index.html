@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Defensor Matemático Espacial</title>
     <style>
         body {
@@ -218,7 +218,7 @@
                 <button id="medium-btn" class="difficulty-btn">Médio</button>
                 <button id="hard-btn" class="difficulty-btn">Difícil</button>
             </div>
-            <p><small>Controles: A/Seta Esquerda para mover para esquerda, D/Seta Direita para direita, Espaço para atirar</small></p>
+            <p><small>Controles: A/D ou Setas (PC), Toque à esquerda/direita para mover e na nave para atirar (Mobile)</small></p>
         </div>
     </div>
 
@@ -251,7 +251,9 @@
             keys: {},
             gameWidth: 0,
             gameHeight: 0,
-            currentEnemySpeed: gameConfig.enemySpeed
+            currentEnemySpeed: gameConfig.enemySpeed,
+            moveLeft: false,  // Adicionado para controle de toque
+            moveRight: false  // Adicionado para controle de toque
         };
 
         // Elementos do DOM
@@ -272,7 +274,6 @@
 
         // Inicialização do jogo
         function initGame() {
-            // Limpar o estado do jogo
             gameState = {
                 score: 0,
                 lives: gameConfig.initialLives,
@@ -288,29 +289,22 @@
                 keys: gameState.keys,
                 gameWidth: gameContainer.clientWidth,
                 gameHeight: gameContainer.clientHeight,
-                currentEnemySpeed: gameConfig.enemySpeed
+                currentEnemySpeed: gameConfig.enemySpeed,
+                moveLeft: false,
+                moveRight: false
             };
 
-            // Atualizar HUD
             scoreElement.textContent = gameState.score;
             livesElement.textContent = gameState.lives;
 
-            // Mostrar a nave do jogador primeiro para obter as dimensões corretas
             player.style.display = 'block';
-            
-            // Posicionar o jogador após garantir que está visível
             setTimeout(() => {
                 gameState.playerX = (gameState.gameWidth / 2) - (player.offsetWidth / 2);
                 gameState.playerY = gameState.gameHeight - player.offsetHeight - 20;
                 updatePlayerPosition();
                 
-                // Remover inimigos e lasers existentes
                 document.querySelectorAll('.enemy, .laser, .feedback').forEach(el => el.remove());
-    
-                // Criar novos inimigos e gerar nova questão
                 generateQuestion();
-    
-                // Ocultar tela de fim de jogo e menu inicial
                 gameOverElement.style.display = 'none';
                 startMenu.style.display = 'none';
             }, 50);
@@ -324,45 +318,32 @@
 
         // Gerar uma questão matemática
         function generateQuestion() {
-            // Limpar inimigos existentes
             gameState.enemies.forEach(enemy => {
-                if (enemy.element) {
-                    enemy.element.remove();
-                }
+                if (enemy.element) enemy.element.remove();
             });
             gameState.enemies = [];
 
-            // Apenas somas com números até 10
-            let num1, num2, answer, questionText;
-            
-            // Adição com números até 10
-            num1 = Math.floor(Math.random() * 10) + 1; // Números de 1 a 10
-            num2 = Math.floor(Math.random() * 10) + 1; // Números de 1 a 10
-            answer = num1 + num2;
-            questionText = `${num1} + ${num2} = ?`;
+            let num1 = Math.floor(Math.random() * 10) + 1;
+            let num2 = Math.floor(Math.random() * 10) + 1;
+            let answer = num1 + num2;
+            let questionText = `${num1} + ${num2} = ?`;
             
             gameState.currentQuestion = questionText;
             gameState.correctAnswer = answer;
             questionElement.textContent = questionText;
 
-            // Gerar respostas erradas
             let possibleAnswers = [answer];
             while (possibleAnswers.length < gameConfig.enemyCount) {
-                // Gerar uma resposta errada próxima da correta
                 let wrongAnswer;
                 do {
                     wrongAnswer = answer + Math.floor(Math.random() * 10) - 5;
-                    // Garantir que é uma resposta não negativa e diferente
                     if (wrongAnswer < 0) wrongAnswer = Math.abs(wrongAnswer) + 2;
                 } while (possibleAnswers.includes(wrongAnswer));
-                
                 possibleAnswers.push(wrongAnswer);
             }
 
-            // Embaralhar as respostas
             possibleAnswers = shuffleArray(possibleAnswers);
 
-            // Criar naves inimigas
             const enemyWidth = 60;
             const spacing = (gameState.gameWidth - (enemyWidth * gameConfig.enemyCount)) / (gameConfig.enemyCount + 1);
             
@@ -370,7 +351,6 @@
                 const x = spacing + (i * (enemyWidth + spacing));
                 const y = gameConfig.enemySpawnHeight;
                 const answerValue = possibleAnswers[i];
-                
                 createEnemy(x, y, answerValue, answerValue === answer);
             }
         }
@@ -382,7 +362,6 @@
             enemy.textContent = value;
             enemy.style.left = x + 'px';
             enemy.style.top = y + 'px';
-            
             gameContainer.appendChild(enemy);
             
             gameState.enemies.push({
@@ -402,7 +381,6 @@
             laser.className = 'laser';
             laser.style.left = x + 'px';
             laser.style.top = y + 'px';
-            
             gameContainer.appendChild(laser);
             
             gameState.lasers.push({
@@ -412,242 +390,215 @@
             });
         }
 
-        // Mostrar feedback para o jogador
+        // Mostrar feedback
         function showFeedback(isCorrect, x, y) {
             const feedback = document.createElement('div');
             feedback.className = isCorrect ? 'feedback correct' : 'feedback wrong';
             feedback.textContent = isCorrect ? 'CORRETO!' : 'ERRADO!';
             feedback.style.left = (x - 50) + 'px';
             feedback.style.top = y + 'px';
-            
             gameContainer.appendChild(feedback);
             
-            // Animar o feedback
             setTimeout(() => {
                 feedback.style.opacity = '0';
                 feedback.style.transform = 'translateY(-50px)';
                 setTimeout(() => feedback.remove(), 1000);
             }, 500);
             
-            // Gerar nova questão após o acerto sem pausar o jogo
             if (isCorrect) {
-                // Pequena pausa antes de gerar nova questão, mas sem pausar o loop principal
-                setTimeout(() => {
-                    generateQuestion();
-                }, 1000);
+                setTimeout(() => generateQuestion(), 1000);
             }
         }
 
         // Atualizar o jogo
         function updateGame() {
             if (gameState.isGameOver || gameState.isGamePaused || !gameState.gameStarted) return;
-            
-            // Movimentar o jogador
+
+            // Movimento com teclado
             if (gameState.keys['KeyA'] || gameState.keys['ArrowLeft']) {
                 gameState.playerX = Math.max(0, gameState.playerX - gameConfig.playerSpeed);
             }
             if (gameState.keys['KeyD'] || gameState.keys['ArrowRight']) {
                 gameState.playerX = Math.min(gameState.gameWidth - player.clientWidth, gameState.playerX + gameConfig.playerSpeed);
             }
+
+            // Movimento com toque
+            if (gameState.moveLeft) {
+                gameState.playerX = Math.max(0, gameState.playerX - gameConfig.playerSpeed);
+            }
+            if (gameState.moveRight) {
+                gameState.playerX = Math.min(gameState.gameWidth - player.clientWidth, gameState.playerX + gameConfig.playerSpeed);
+            }
             updatePlayerPosition();
-            
-            // Movimentar os lasers
+
+            // Lasers
             for (let i = gameState.lasers.length - 1; i >= 0; i--) {
                 const laser = gameState.lasers[i];
                 laser.y -= gameConfig.laserSpeed;
                 laser.element.style.top = laser.y + 'px';
                 
-                // Remover lasers que saíram da tela
                 if (laser.y < 0) {
                     laser.element.remove();
                     gameState.lasers.splice(i, 1);
                     continue;
                 }
                 
-                // Verificar colisões com inimigos
                 for (let j = gameState.enemies.length - 1; j >= 0; j--) {
                     const enemy = gameState.enemies[j];
-                    
-                    if (isColliding(
-                        laser.x, laser.y, 3, 15,
-                        enemy.x, enemy.y, enemy.width, enemy.height
-                    )) {
-                        // Remover o laser
+                    if (isColliding(laser.x, laser.y, 3, 15, enemy.x, enemy.y, enemy.width, enemy.height)) {
                         laser.element.remove();
                         gameState.lasers.splice(i, 1);
                         
-                        // Verificar se acertou a resposta correta
                         if (enemy.isCorrect) {
-                            // Aumentar a pontuação
                             gameState.score++;
                             scoreElement.textContent = gameState.score;
-                            
-                            // Aumentar a dificuldade conforme o nível selecionado
                             gameState.currentEnemySpeed += gameConfig.difficultyIncrease;
                             
-                            // Verificar vitória
                             if (gameState.score >= gameConfig.maxScore) {
                                 endGame(true);
                                 return;
                             }
                             
-                            // Destruir todos os inimigos
-                            gameState.enemies.forEach(e => {
-                                e.element.remove();
-                            });
+                            gameState.enemies.forEach(e => e.element.remove());
                             gameState.enemies = [];
-                            
-                            // Mostrar feedback
                             showFeedback(true, enemy.x, enemy.y);
                         } else {
-                            // Errou a resposta
                             showFeedback(false, enemy.x, enemy.y);
-                            
-                            // Remover apenas o inimigo atingido
                             enemy.element.remove();
                             gameState.enemies.splice(j, 1);
                         }
-                        
                         break;
                     }
                 }
             }
-            
-            // Movimentar os inimigos
+
+            // Inimigos
             for (let i = gameState.enemies.length - 1; i >= 0; i--) {
                 const enemy = gameState.enemies[i];
                 enemy.y += gameState.currentEnemySpeed;
                 enemy.element.style.top = enemy.y + 'px';
                 
-                // Verificar se inimigo chegou ao fundo da tela
                 if (enemy.y + enemy.height > gameState.gameHeight) {
                     enemy.element.remove();
                     gameState.enemies.splice(i, 1);
-                    
-                    // Perder uma vida
                     gameState.lives--;
                     livesElement.textContent = gameState.lives;
                     
-                    // Verificar game over
                     if (gameState.lives <= 0) {
                         endGame(false);
                         return;
                     }
                     
-                    // Se todos os inimigos saíram, gerar novos
-                    if (gameState.enemies.length === 0) {
-                        generateQuestion();
-                    }
+                    if (gameState.enemies.length === 0) generateQuestion();
                 }
             }
         }
 
-        // Verificar colisão entre dois retângulos
+        // Verificar colisão
         function isColliding(x1, y1, w1, h1, x2, y2, w2, h2) {
-            return x1 < x2 + w2 &&
-                   x1 + w1 > x2 &&
-                   y1 < y2 + h2 &&
-                   y1 + h1 > y2;
+            return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
         }
 
         // Finalizar o jogo
         function endGame(isVictory) {
             gameState.isGameOver = true;
-            
-            if (isVictory) {
-                endTitleElement.textContent = 'VITÓRIA!';
-                endMessageElement.textContent = `Parabéns! Você atingiu ${gameState.score} pontos!`;
-            } else {
-                endTitleElement.textContent = 'FIM DE JOGO';
-                endMessageElement.textContent = 'Você perdeu todas as suas vidas!';
-            }
-            
+            endTitleElement.textContent = isVictory ? 'VITÓRIA!' : 'FIM DE JOGO';
+            endMessageElement.textContent = isVictory ? `Parabéns! Você atingiu ${gameState.score} pontos!` : 'Você perdeu todas as suas vidas!';
             gameOverElement.style.display = 'block';
         }
 
-        // Embaralhar array (algoritmo Fisher-Yates)
+        // Embaralhar array
         function shuffleArray(array) {
-            let currentIndex = array.length;
-            let temporaryValue, randomIndex;
-
-            while (currentIndex !== 0) {
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex -= 1;
-                temporaryValue = array[currentIndex];
-                array[currentIndex] = array[randomIndex];
-                array[randomIndex] = temporaryValue;
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
             }
-
             return array;
         }
 
-        // Configurar níveis de dificuldade
+        // Configurar dificuldades
         easyButton.addEventListener('click', () => {
-            // Nível fácil: sem aumento de velocidade
             gameConfig.enemySpeed = 0.25;
             gameConfig.difficultyIncrease = 0;
             initGame();
         });
-        
         mediumButton.addEventListener('click', () => {
-            // Nível médio: aumento moderado de velocidade
             gameConfig.enemySpeed = 0.3;
             gameConfig.difficultyIncrease = 0.05;
             initGame();
         });
-        
         hardButton.addEventListener('click', () => {
-            // Nível difícil: aumento rápido de velocidade
             gameConfig.enemySpeed = 0.4;
             gameConfig.difficultyIncrease = 0.1;
             initGame();
         });
-        
-        // Event Listeners
+
+        // Controles de teclado
         document.addEventListener('keydown', (e) => {
             gameState.keys[e.code] = true;
-            
-            // Atirar com a barra de espaço
             if (e.code === 'Space' && !gameState.isGameOver && !gameState.isGamePaused && gameState.gameStarted) {
-                createLaser(
-                    gameState.playerX + (player.clientWidth / 2) - 1.5,
-                    gameState.playerY
-                );
+                createLaser(gameState.playerX + (player.clientWidth / 2) - 1.5, gameState.playerY);
             }
         });
-
         document.addEventListener('keyup', (e) => {
             gameState.keys[e.code] = false;
         });
 
+        // Controles de toque
+        function isTouchOnPlayer(touchX, touchY) {
+            const playerRect = player.getBoundingClientRect();
+            return touchX >= playerRect.left && touchX <= playerRect.right &&
+                   touchY >= playerRect.top && touchY <= playerRect.bottom;
+        }
+
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const touchX = touch.clientX;
+            const touchY = touch.clientY;
+
+            if (isTouchOnPlayer(touchX, touchY)) {
+                if (!gameState.isGameOver && !gameState.isGamePaused && gameState.gameStarted) {
+                    createLaser(gameState.playerX + (player.clientWidth / 2) - 1.5, gameState.playerY);
+                }
+            } else {
+                if (touchX < gameState.gameWidth / 2) {
+                    gameState.moveLeft = true;
+                    gameState.moveRight = false;
+                } else {
+                    gameState.moveRight = true;
+                    gameState.moveLeft = false;
+                }
+            }
+        });
+
+        gameContainer.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            gameState.moveLeft = false;
+            gameState.moveRight = false;
+        });
+
+        // Redimensionamento
         window.addEventListener('resize', () => {
             gameState.gameWidth = gameContainer.clientWidth;
             gameState.gameHeight = gameContainer.clientHeight;
-            
-            // Reposicionar o jogador
             gameState.playerX = Math.min(gameState.gameWidth - player.clientWidth, gameState.playerX);
             gameState.playerY = gameState.gameHeight - player.clientHeight - 20;
             updatePlayerPosition();
         });
 
-        restartButton.addEventListener('click', () => {
-            initGame();
-        });
+        restartButton.addEventListener('click', initGame);
 
         // Preparação inicial
         function init() {
             gameState.gameWidth = gameContainer.clientWidth;
             gameState.gameHeight = gameContainer.clientHeight;
-            
-            // Inicializar a nave do jogador para cálculos corretos, mas fora da tela
             player.style.display = 'block';
-            player.style.top = '-100px'; // Esconde visualmente, mas permite cálculos de dimensão
-            
-            // Mostrar o menu inicial
+            player.style.top = '-100px';
             startMenu.style.display = 'block';
         }
-        
-        // Inicialização e loop de jogo
+
+        // Loop do jogo
         init();
         function gameLoop() {
             updateGame();
